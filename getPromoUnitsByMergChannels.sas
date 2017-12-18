@@ -135,9 +135,14 @@ set promo_data_&seg_name.;
  format related_date mmddyy10.;
 run;
 
-proc export data=promo_data
+proc export data=promo_data_&seg_name.
 outfile="&outPath.\promo_data_&&seg_name._&date..csv"
 dbms=csv replace;
 run;
 
-%put &outPath.;
+/*check*/
+proc sql;
+select distinct &seg_name. from promo_data_&seg_name.;
+quit;
+/*15 including NA*/
+
