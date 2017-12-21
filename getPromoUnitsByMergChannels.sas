@@ -145,4 +145,40 @@ proc sql;
 select distinct &seg_name. from promo_data_&seg_name.;
 quit;
 /*15 including NA*/
+proc sql;
+select sum(units_details) as sum_details
+, sum(units_mails) as sum_mails
+, sum(units_meetings) as sum_meetings
+from promo_data_&seg_name.;
+quit;
+/*sum_details sum_mails sum_meetings 
+1321075 9302 54343 
+*/
+
+proc sql;
+create table check_sumUnits_by_dept as
+select &seg_name., sum(units_mails) as sum_mails
+, sum(units_meetings) as sum_meetings
+from promo_data_&seg_name.
+group by &seg_name.;
+quit;
+
+
+proc sql;
+select sum(units_details) as sum_details
+, sum(units_mails) as sum_mails
+, sum(units_meetings) as sum_meetings
+from promo_data;
+quit;
+/*sum_details sum_mails sum_meetings 
+1416578 9673 54128 
+*/
+
+proc sql;
+create table check_sumUnits_by_onekey as
+select onekey_id, sum(units_mails) as sum_mails
+, sum(units_meetings) as sum_meetings
+from promo_data
+group by onekey_id;
+quit;
 
