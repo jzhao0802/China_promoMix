@@ -28,6 +28,14 @@ dataOneKey <- read.csv(file=paste0(path_rawDt, 'onekey_hosp.csv')
                      , stringsAsFactors = F
 )
 
+spec_ref <- read.csv(file=paste0(path_rawDt, "spec_ref.csv")
+                     , header = T
+                     , stringsAsFactors = F
+                     )
+
+
+
+
 dim(dataDetail) #[1] 1321075      19
 
 dim(dataMeet) #[1] 54479    19
@@ -144,9 +152,38 @@ monthNumCheckBySeg_detail_hosp <- checkMonthNumBySpecDt(dataDetailSort, 'onekey_
 monthNumCheckBySeg_Mail_hosp <- checkMonthNumBySpecDt(dataMailSort, 'onekey_id', 'related_date')
 monthNumCheckBySeg_Meet_hosp <- checkMonthNumBySpecDt(dataMeetSort, 'onekey_id', 'related_date')
 
+# check the department_id in three promo file
+lapply(list(dataDetailSort, dataMailSort, dataMeetSort), function(X)table(X[, 'department_code']))
 
-# check the promo spending trend on national level
 
+# check the specialty level
+spec_b=unique(dataDetailSort$promo_specialty)
+spec_a=spec_ref$Specialty
 
+matchSpec <- function(a, b, n_heads){
+  heads <- substr(a, 1, n_heads)
+  b_matched <- grep(paste0("^", heads), b, value = T, ignore.case = T, perl=T)
+  b_matched <- ifelse(length(b_matched)==0, NA, b_matched)
+  return(b_matched)
+}
 
+matched = unlist(lapply(spec_a, function(X)matchSpec(X, spec_b, 3)))
+
+matched_res <- data.frame(spec_reference=spec_a, spec_details=spec_b, spec_matched_withRef=matched)
+
+write.csv(matched_res
+          , file = paste0(resultDir, 'spec_matched.csv')
+          , row.names = F)
+
+matched_withManualChange <- read.csv(file=paste0(resultDir, 'spec_matched_withManualChange.csv')
+                                     , header = T
+                                     , stringsAsFactors = F
+                                     )
+spec_a <- matched_withManualChange$spec_reference.manual_change.
+spec_b <- matched_withManualChange$spec_details
+matched_2 = unlist(lapply(spec_a, function(X)matchSpec(X, spec_b, 3)))
+matched_res_2 <- data.frame(spec_reference=spec_a
+                            , spec_details=spec_b
+                            , spec_matched_withRef=matched_2
+                            )
 

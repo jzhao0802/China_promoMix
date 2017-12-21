@@ -1,14 +1,17 @@
-%let date=20171219;
+%let date=20171220;
 
 libname dir_raw "C:\work\working materials\Materials for promo Mix\China\fromJiajing\output";
 libname sasout "C:\work\working materials\Materials for promo Mix\China\03 Results\sas";
 %let dataPath = C:\work\working materials\Materials for promo Mix\China\fromJiajing\output;
+%let dataPath1 = C:\work\working materials\Materials for promo Mix\China\03 Results\2017-12-21 12.03.17;
 %let outPath = C:\work\working materials\Materials for promo Mix\China\03 Results\sas;
 
-%let seg_name = department_code;
+
+%let seg_name = specialty;
 proc import out=details
 datafile="&dataPath\Detailing.csv"
 dbms=csv replace;
+GUESSINGROWS=1321075;
 run;
 
 proc import out=mails
@@ -26,11 +29,89 @@ datafile="&dataPath\onekey_hosp.csv"
 dbms=csv replace;
 run;
 
+proc import out=spec_ref
+datafile="&dataPath1\spec_matched_withManualChange_addJiajing.csv"
+dbms=csv replace;
+run;
+
+proc import out=spec_ref_code
+datafile="&dataPath\spec_ref.csv"
+dbms=csv replace;
+run;
+
+data spec_ref_code;
+length specialty $ 30;
+set spec_ref_code;
+run;
+
+data spec_ref;
+length spec_reference_manual_change__ad $30;
+set spec_ref;
+run;
+
+proc sql;
+create table spec_ref_addCode as
+select a.spec_reference, a.spec_reference_manual_change__ad as spec_details,b.promo_spe_code
+from spec_ref a left join spec_ref_code b
+on a.spec_reference=b.specialty;
+quit;
+
+proc sql;
+create table details as
+select a.*, b.promo_spe_code as specialty
+from details a left join spec_ref_addCode b
+on a.Promo_Specialty=b.spec_details;
+quit;
+
+/*check the spec code merge*/
+proc sql;
+create table check_spec_merge as
+select distinct promo_specialty from details 
+where specialty=.;
+quit;
+
+proc sql;
+select distinct promo_specialty from details;
+quit;
+
+proc sql;
+select distinct spec_details from spec_ref_addCode;
+quit;
 data details;
 set details;
 related_date1 = input(related_date,yymmdd10.);
+if _n_=1 then do;
+call symput('spec_promo', Promo_Specialty);
+end;
 /*related_date2=trim(related_date);*/
 run;
+%put &spec_promo.&date.;
+
+data temp;
+set spec_ref;
+if _n_=1 then do;
+call symput('spec_ref', spec_ref_changed);
+end;
+/*related_date2=trim(related_date);*/
+run;
+%put &spec_ref.&date.;
+%put &date;
+
+data temp;
+set spec_ref;
+test="tt"||strip(spec_ref_changed)||"tt";
+spec_ref_changed1=strip(spec_ref_changed);
+cat = spec_ref_changed1||"tt";
+run;
+
+proc sql;
+select distinct Promo_Specialty from details;
+quit;
+
+
+proc sql;
+select distinct specialty from spec_ref;
+quit;
 
 proc sql;
 create table seg_all as
@@ -62,19 +143,19 @@ select sum(units_details) from seg_det_1;
 quit;
 /*1321075 
 */
-
-proc sql;
-create table seg_det_mail_1 as
-select a.*, mails_unit.units_mails
-from
-(select seg_all.&seg_name., details_unit.related_date, details_unit.units_details
-from seg_all left join
-(select &seg_name., related_date1 as related_date, count(*) as units_details from details group by &seg_name., related_date1) details_unit
-on seg_all.&seg_name.=details_unit.&seg_name.) a
-left join (select &seg_name., related_date, count(*) as units_mails from mails group by &seg_name., related_date) mails_unit
-
-on a.&seg_name.=mails_unit.&seg_name. and a.related_date=mails_unit.related_date;
-quit;
+/**/
+/*proc sql;*/
+/*create table seg_det_mail_1 as*/
+/*select a.*, mails_unit.units_mails*/
+/*from*/
+/*(select seg_all.&seg_name., details_unit.related_date, details_unit.units_details*/
+/*from seg_all left join*/
+/*(select &seg_name., related_date1 as related_date, count(*) as units_details from details group by &seg_name., related_date1) details_unit*/
+/*on seg_all.&seg_name.=details_unit.&seg_name.) a*/
+/*left join (select &seg_name., related_date, count(*) as units_mails from mails group by &seg_name., related_date) mails_unit*/
+/**/
+/*on a.&seg_name.=mails_unit.&seg_name. and a.related_date=mails_unit.related_date;*/
+/*quit;*/
 
 proc sql;
 create table mail_2 as
@@ -133,7 +214,7 @@ quit;
 proc sql;
 create table tt6 as
 select a.&seg_name. as &seg_name._1
-, a.related_date as related_datea_1
+, a.related_date as related_date_1
 , a.units_details
 , a.units_mails
 , b.&seg_name. as &seg_name._2
@@ -151,7 +232,6 @@ if related_date_1 ^=. then related_date=related_date_1;else related_date=related
 format related_date MMDDYY10.;
 keep &seg_name. related_date units_details units_mails units_meetings;
 run;
-
 
 proc sql;
 create table tt8 as
@@ -205,3 +285,14 @@ proc export data=sasout.check_n_month_&seg_name.
 outfile="&outPath.\sasout.check_n_month_&seg_name..csv"
 dbms=csv replace;
 run;
+
+
+/*join with sales data*/
+proc import out=sasout.sales_bySpec
+datafile="&dataPath\sales_bySpec.csv"
+dbms=csv replace;
+run;
+
+proc sql;
+select distinct specialty from sasout.sales_bySpec;
+quit;
