@@ -1,19 +1,20 @@
-%let date=20171220;
+%let date=20171222;
 
 libname dir_raw "C:\work\working materials\Materials for promo Mix\China\fromJiajing\output";
-libname sasout "C:\work\working materials\Materials for promo Mix\China\03 Results\sas";
+libname sasout "C:\work\working materials\Materials for promo Mix\China\03 Results\sas\&date.";
 %let dataPath = C:\work\working materials\Materials for promo Mix\China\fromJiajing\output;
 %let dataPath1 = C:\work\working materials\Materials for promo Mix\China\03 Results\2017-12-21 12.03.17;
-%let outPath = C:\work\working materials\Materials for promo Mix\China\03 Results\sas;
+%let outPath = C:\work\working materials\Materials for promo Mix\China\03 Results\sas\&date.;
 
+/*proc import out=dir_raw.details*/
+/*datafile="&dataPath\Detailing.csv"*/
+/*dbms=csv replace;*/
+/*GUESSINGROWS=1321075;*/
+/*run;*/
 
-%let seg_name = specialty;
-proc import out=details
-datafile="&dataPath\Detailing.csv"
-dbms=csv replace;
-GUESSINGROWS=1321075;
+data details;
+set dir_raw.details;
 run;
-
 proc import out=mails
 datafile="&dataPath\Mailing.csv"
 dbms=csv replace;
@@ -87,39 +88,47 @@ end;
 run;
 %put &spec_promo.&date.;
 
-data temp;
-set spec_ref;
-if _n_=1 then do;
-call symput('spec_ref', spec_ref_changed);
-end;
+/*data temp;*/
+/*set spec_ref;*/
+/*if _n_=1 then do;*/
+/*call symput('spec_ref', spec_ref_changed);*/
+/*end;*/
 /*related_date2=trim(related_date);*/
+/*run;*/
+/*%put &spec_ref.&date.;*/
+/*%put &date;*/
+/**/
+/*data temp;*/
+/*set spec_ref;*/
+/*test="tt"||strip(spec_ref_changed)||"tt";*/
+/*spec_ref_changed1=strip(spec_ref_changed);*/
+/*cat = spec_ref_changed1||"tt";*/
+/*run;*/
+
+/*proc sql;*/
+/*select distinct Promo_Specialty from details;*/
+/*quit;*/
+/**/
+/**/
+/*proc sql;*/
+/*select distinct specialty from spec_ref;*/
+/*quit;*/
+
+%let seg_name = Speciality;
+
+data details;
+set details;
+rename specialty=speciality;
 run;
-%put &spec_ref.&date.;
-%put &date;
 
-data temp;
-set spec_ref;
-test="tt"||strip(spec_ref_changed)||"tt";
-spec_ref_changed1=strip(spec_ref_changed);
-cat = spec_ref_changed1||"tt";
-run;
-
-proc sql;
-select distinct Promo_Specialty from details;
-quit;
-
-
-proc sql;
-select distinct specialty from spec_ref;
-quit;
-
+%macro merge_promo_units(seg_name);
 proc sql;
 create table seg_all as
-select distinct &seg_name. from details
+select distinct &seg_name. from details /*specialty*/
 union
-select distinct &seg_name. from mails
+select distinct &seg_name. from mails /*Speciality*/
 union
-select distinct &seg_name. from meetings;
+select distinct &seg_name. from meetings; /*Speciality*/
 quit;
 
 
@@ -180,7 +189,7 @@ select seg_det_1.&seg_name. as &seg_name._1
 , mail_2.related_date as related_date_2
 , mail_2.units_mails
 from seg_det_1 full outer join mail_2
-on seg_det_1.department_code = mail_2.department_code and seg_det_1.related_date=mail_2.related_date;
+on seg_det_1.&seg_name. = mail_2.&seg_name. and seg_det_1.related_date=mail_2.related_date;
 quit;
 
 data tt3;
@@ -282,9 +291,15 @@ group by &seg_name.;
 quit;
 
 proc export data=sasout.check_n_month_&seg_name.
-outfile="&outPath.\sasout.check_n_month_&seg_name..csv"
+outfile="&outPath.\check_n_month_&seg_name..csv"
 dbms=csv replace;
 run;
+
+
+
+%mend;
+
+%merge_promo_units(&seg_name.);
 
 
 /*join with sales data*/
