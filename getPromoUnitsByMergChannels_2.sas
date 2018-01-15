@@ -1,10 +1,12 @@
-%let date=20171222;
+%let date=20180115_1;
 
 libname dir_raw "C:\work\working materials\Materials for promo Mix\China\fromJiajing\output";
 libname sasout "C:\work\working materials\Materials for promo Mix\China\03 Results\sas\&date.";
+libname sales "C:\work\working materials\Materials for promo Mix\China\01 Data";
 %let dataPath = C:\work\working materials\Materials for promo Mix\China\fromJiajing\output;
 %let dataPath1 = C:\work\working materials\Materials for promo Mix\China\03 Results\2017-12-21 12.03.17;
 %let outPath = C:\work\working materials\Materials for promo Mix\China\03 Results\sas\&date.;
+%let salesPath= C:\work\working materials\Materials for promo Mix\China\01 Data;
 
 /*proc import out=dir_raw.details*/
 /*datafile="&dataPath\Detailing.csv"*/
@@ -87,6 +89,13 @@ end;
 /*related_date2=trim(related_date);*/
 run;
 %put &spec_promo.&date.;
+data details;
+set details;
+department_code1=department_code+0;
+
+drop department_code;
+rename department_code1=department_code;
+run;
 
 /*data temp;*/
 /*set spec_ref;*/
@@ -114,7 +123,8 @@ run;
 /*select distinct specialty from spec_ref;*/
 /*quit;*/
 
-%let seg_name = Speciality;
+%let seg_name = department_code;
+/*%let seg_name = speciality;*/
 
 data details;
 set details;
@@ -303,11 +313,71 @@ run;
 
 
 /*join with sales data*/
-proc import out=sasout.sales_bySpec
-datafile="&dataPath\sales_bySpec.csv"
+proc import out=sales.sales_bySpec
+datafile="&salesPath\sales_bySpec_new.csv"
 dbms=csv replace;
 run;
 
+proc import out=sales.sales_byCity
+datafile="&salesPath\sales_byCity_new.csv"
+dbms=csv replace;
+run;
+
+
 proc sql;
-select distinct specialty from sasout.sales_bySpec;
+select distinct promo_spe_code from sales.sales_bySpec;
 quit;
+
+proc sql;
+select distinct Department_code from sales.sales_byCity;
+quit;
+
+/*proc sql;*/
+/*create table promo_sales_&seg_name. as*/
+/*select a.*, b.STANDARD_UNITS*/
+/*from sasout.promo_data_&seg_name. a left join sales.sales_bySpec b*/
+/*on a.&seg_name. = b.promo_spe_code;*/
+/*quit;*/
+
+proc sql;
+create table promo_sales_&seg_name. as
+select a.*, b.STANDARD_UNITS
+from sasout.promo_data_&seg_name. a left join sales.sales_byCity b
+on a.&seg_name. = b.&seg_name.;
+quit;
+
+proc sql;
+create table &seg_name._notinsales as
+select distinct &seg_name. from promo_sales_&seg_name.
+where standard_units = .;
+quit;
+
+proc export data=&seg_name._notinsales
+outfile="&outPath.\&seg_name._notInSales.csv"
+dbms=csv replace;
+run;
+
+/**/
+proc sql;
+create table sasout.promo_sales_&seg_name._valid as
+select a.*, b.STANDARD_UNITS
+from sasout.promo_data_&seg_name. a left join sales.sales_bySpec b
+on a.&seg_name. = b.promo_spe_code
+where b.standard_units^=. and a.&seg_name.^=.;
+quit;
+/*8330*/
+
+proc sql;
+create table sasout.promo_sales_dep_valid as
+select a.*, b.STANDARD_UNITS
+from sasout.promo_data_&seg_name. a left join sales.sales_byCity b
+on a.&seg_name. = b.&seg_name.
+where b.standard_units^=. and a.&seg_name.^=.;
+quit;
+/*15470*/
+
+proc sql;
+select distinct &seg_name. from promo_sales_&seg_name._valid;
+quit;
+/*7 specialty types*/
+
